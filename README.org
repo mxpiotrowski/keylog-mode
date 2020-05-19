@@ -1,1 +1,8 @@
-Keystroke logging in Emacs for writing research.  Inspired by this [[https://chrisdone.com/posts/emacs-key-analysis/][blog post]] (code via [[https://web.archive.org/web/20160316165248/http://lpaste.net/91637][Wayback Machine]]).
+Keystroke logging in Emacs for writing research.  *UNDER DEVELOPMENT*.  Inspired by this [[https://chrisdone.com/posts/emacs-key-analysis/][blog post]] (code via [[https://web.archive.org/web/20160316165248/http://lpaste.net/91637][Wayback Machine]]).
+
+- [X] Minor mode
+- [X] Save copy of current buffer as reference for later replay.
+
+- Document length *after* event is only available in post-command-hook
+- What needs to be logged to generate S-notation?
+- What does InputLog’s XML look like?
