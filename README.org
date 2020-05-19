@@ -1,0 +1,1 @@
+Keystroke logging in Emacs for writing research.  Inspired by this [[https://chrisdone.com/posts/emacs-key-analysis/][blog post]] (code via [[https://web.archive.org/web/20160316165248/http://lpaste.net/91637][Wayback Machine]]).
