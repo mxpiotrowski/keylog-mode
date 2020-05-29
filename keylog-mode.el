@@ -27,6 +27,11 @@
 
 ;;; Code:
 
+;; A global counter is probably not ideal: the actual logs may not
+;; necessarily start with 1 and if logging in several buffers, the IDs
+;; in the individual logs won't be contiguous.  But they will be
+;; increasing, and they don't really have any importance anyway.
+;; [FIXME] use a buffer local variable.
 (defvar keylog-event-id 0 "Counter for `log-keys'.")
 
 (define-minor-mode keylog-mode
@@ -57,42 +62,62 @@ When Keylog mode is enabled, ..."
     ;; Buffer for logging
     (set (make-local-variable 'keylog-logfile)
 	 (find-file-noselect
-	  (concat (buffer-file-name) "--" timestamp ".keylog"))))
-  
+	  (concat (buffer-file-name) "--" timestamp ".keylog")))
+
+    ;;
+    (with-current-buffer (get-buffer-create keylog-logfile)
+      (insert ";;; keylog-mode log file " timestamp "\n(")
+      )
+
+    )
+ 
   (add-hook 'pre-command-hook 'keylog-log-keys nil t)
   (message "Starting keystroke logging..."))
 
 (defun keylog-mode-stop ()
   (message "Stopping keystroke logging...")
-  (with-current-buffer (get-buffer keylog-logfile)
-    (save-buffer))
-  (remove-hook 'pre-command-hook 'keylog-log-keys t))
+  (setq this-command 'keylog-mode-stop)
+  
+  (remove-hook 'pre-command-hook 'keylog-log-keys t)
+  ;; `keylog-post-command' will run one last time and then remove itself
+  ;; from `post-command-hook'
+  )
 
 (defun keylog-log-keys ()
   (interactive)
+  ;; Add it here rather than in `keylog-mode-stop' to avoid creating
+  ;; an entry for the activation itself
+  (add-hook 'post-command-hook 'keylog-post-command nil t)
+  
   (let ((deactivate-mark deactivate-mark))
     (when (this-command-keys)
       (let ((major-mode-name major-mode)
-            (tt (format-time-string "%T:%N") ;(format-time-string "%s" (current-time)
-		)
+            (tt (format-time-string "%T:%N"))
 	    (pos (point))
 	    (len (buffer-size))
 	    (buf (buffer-name)))
         (with-current-buffer (get-buffer-create keylog-logfile)
           (goto-char (point-max))
-          (if (eql this-command 'self-insert-command)
-              (let ((desc (key-description (this-command-keys))))
-                (if (= 1 (length desc))
-                    (insert (format "\n%d %s buf: %s %S pos: %d len: %d "
-				    keylog-event-id tt buf major-mode-name pos len)
-			    desc)
-                  (insert (format "\n%d %s buf: %s %S pos: %d len: %d "
-				  keylog-event-id tt buf major-mode-name
-				  pos len) " " desc " ")))
-	    (insert (format "\n%d %s buf: %s %S pos: %d len: %d "
-			    keylog-event-id tt buf major-mode-name pos len)
-		    (key-description (this-command-keys))))
+	  (insert (format "\n(%d \"%s\" %d %d \"" keylog-event-id tt pos len)
+	  	  (key-description (this-command-keys)) "\"")
+	  
 	  (setf keylog-event-id (1+ keylog-event-id)))))))
+
+(defun keylog-post-command ()
+  "Log buffer length after command execution."
+  (interactive)
+  
+  (let ((len (buffer-size)))
+    (with-current-buffer (get-buffer-create keylog-logfile)
+      (goto-char (point-max))
+      (insert (format " %S %d)" this-command len))
+
+      (when (eq this-command 'keylog-mode-stop)
+	(insert "\n)\n") ; insert closing paren
+	(save-buffer)))
+
+    (when (eq this-command 'keylog-mode-stop)
+      (remove-hook 'post-command-hook 'keylog-post-command t))))
 
 
 (provide 'keylog-mode)
